@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Orçamentos EMNATEC</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Orçamentos">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+  <script>
+    if (localStorage.getItem('orcamentos_dark') === 'true') {
+      document.documentElement.classList.add('dark')
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js" defer></script>
+  <style>
+    .animate-slide-in { animation: slideIn 0.25s ease-out }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
+    html, body { touch-action: manipulation; }
+    @media (max-width: 1023px) {
+      body { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
+      #sidebar {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        z-index: 50; width: 100%; min-height: 0 !important;
+        border-top: 1px solid #1f2937; border-right: none;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      #sidebar .p-5, #sidebar .mt-auto { display: none !important; }
+      #sidebar nav {
+        display: flex !important; flex-direction: row;
+        padding: 0; gap: 0;
+      }
+      #sidebar nav .nav-btn {
+        flex: 1; flex-direction: column; gap: 1px;
+        padding: 6px 2px; height: 72px; border-radius: 0 !important;
+        font-size: 13px; border-left: 0 !important;
+        min-width: 0; justify-content: center;
+      }
+      #sidebar nav .nav-btn i { font-size: 24px; width: auto; margin: 0; }
+      #sidebar nav .nav-btn .ml-auto { display: none; }
+      #sidebar nav .nav-btn.border-l-2 { border-top: 2px solid #3b82f6; }
+      #sidebar nav .nav-btn.rounded-lg { border-radius: 0 !important; }
+      #content { padding: 16px 12px calc(84px + env(safe-area-inset-bottom, 0px)); }
+      #content .max-w-6xl, #content .max-w-5xl, #content .max-w-4xl { padding: 0; }
+      input, select, textarea, button { font-size: 20px !important; }
+      .text-sm { font-size: 18px !important; }
+      .text-xs { font-size: 16px !important; }
+      #toast-container { top: auto !important; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); right: 12px; left: 12px; }
+      #toast-container > div { width: 100%; }
+      #items-table th, #items-table td { min-width: 0 !important; padding: 8px 4px !important; }
+      #items-table th:nth-child(1), #items-table td:nth-child(1) { min-width: 100px !important; }
+      #items-table td:nth-child(1) { padding-right: 4px !important; }
+      .item-row input, .item-row td { font-size: 20px !important; }
+      .item-row input[type="number"] { width: 60px !important; padding: 4px 2px !important; }
+      .item-row input[type="text"]:not([list]) { padding: 4px 4px !important; }
+      #items-table td .text-xs { font-size: 13px !important; }
+      #content table:not(#items-table) th,
+      #content table:not(#items-table) td { padding: 16px 6px !important; }
+      #content table:not(#items-table) td:first-child { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #content table:not(#items-table) td:last-child button { padding: 6px !important; margin-right: 0 !important; }
+      .inline-flex.rounded-full { font-size: 14px !important; padding: 3px 10px !important; }
+      #b-desconto { width: 100px !important; }
+      h2.text-2xl { font-size: 26px !important; }
+      h3.text-sm.font-semibold { font-size: 18px !important; }
+      #content label { font-size: 16px !important; }
+      #content .text-lg.font-semibold { font-size: 20px !important; }
+      #content .grid { min-width: 0; }
+      #content .grid > * { min-width: 0; }
+      #b-data, #b-validade { min-width: 0 !important; max-width: 160px !important; width: 100% !important; }
+      #items-table td .text-gray-500 + input[type="number"] { width: 44px !important; }
+    }
+    .item-row input:focus, .item-row select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    input[type="number"]::-webkit-inner-spin-button { opacity: 0.5; }
+    @media print {
+      body { background: white !important; color: #000 !important; font-size: 11pt !important; }
+      #sidebar, #dark-toggle-mobile, .no-print, .print\:hidden, #toast-container { display: none !important; }
+      #content { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+      .print\:block { display: block !important; }
+      .print\:shadow-none { box-shadow: none !important; border-color: #ccc !important; }
+      .print\:border-gray-300 { border-color: #ccc !important; }
+      .dark\:bg-gray-900, .dark\:bg-gray-800, .dark\:bg-gray-950 { background: white !important; }
+      .dark\:text-white, .dark\:text-gray-300, .dark\:text-gray-200 { color: #000 !important; }
+      .dark\:text-gray-400, .dark\:text-gray-500, .dark\:text-gray-600 { color: #555 !important; }
+      .dark\:border-gray-700, .dark\:border-gray-800 { border-color: #ddd !important; }
+      .dark\:bg-gray-800\/50, .dark\:bg-gray-800\/30, .dark\:bg-gray-800\/20 { background: #f5f5f5 !important; }
+      table { width: 100% !important; border-collapse: collapse !important; }
+      h2 { font-size: 16pt !important; }
+      h3 { font-size: 12pt !important; }
+      .bg-white, .dark\:bg-gray-900 { background: white !important; border: 1px solid #ccc !important; box-shadow: none !important; }
+      .rounded-xl { border-radius: 0 !important; }
+      @page { margin: 12mm 15mm; }
+      a, button { text-decoration: none !important; }
+      th, td { min-width: auto !important; word-break: break-word !important; }
+      [class*="min-w-"] { min-width: auto !important; }
+      .overflow-x-auto { overflow: visible !important; }
+      .max-w-4xl, .max-w-5xl, .max-w-6xl { max-width: 100% !important; }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-950 font-sans antialiased transition-colors duration-200">
+  <div id="app" class="min-h-screen flex flex-col lg:flex-row">
+    <aside id="sidebar" class="bg-gray-900 dark:bg-gray-950 text-gray-300 w-full lg:w-64 lg:min-h-screen flex-shrink-0 border-r border-gray-800 dark:border-gray-800">
+      <div class="p-5 border-b border-gray-800 dark:border-gray-800">
+        <h1 class="text-xl font-bold text-white tracking-tight">
+          <i class="fas fa-file-invoice-dollar text-blue-400 mr-2"></i>Orçamentos
+        </h1>
+        <p class="text-xs text-gray-500 mt-1">Sistema Profissional</p>
+      </div>
+      <nav class="p-3 space-y-1" id="nav">
+        <button data-tab="dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-gray-400 hover:text-white hover:bg-gray-800 dark:hover:bg-gray-800">
+          <i class="fas fa-chart-pie w-5 text-center"></i><span class="hidden lg:inline">Dashboard</span><span class="lg:hidden">Dash</span>
+        </button>
+        <button data-tab="clientes" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-gray-400 hover:text-white hover:bg-gray-800 dark:hover:bg-gray-800">
+          <i class="fas fa-users w-5 text-center"></i>Clientes
+        </button>
+        <button data-tab="novo-orcamento" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-gray-400 hover:text-white hover:bg-gray-800 dark:hover:bg-gray-800">
+          <i class="fas fa-plus-circle w-5 text-center"></i><span class="hidden lg:inline">Novo Orçamento</span><span class="lg:hidden">Novo</span>
+        </button>
+        <button data-tab="orcamentos" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-gray-400 hover:text-white hover:bg-gray-800 dark:hover:bg-gray-800">
+          <i class="fas fa-folder-open w-5 text-center"></i><span class="hidden lg:inline">Orçamentos Salvos</span><span class="lg:hidden">Salvos</span>
+          <span class="ml-auto bg-gray-700 text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full" id="budget-count">0</span>
+        </button>
+      </nav>
+      <div class="p-3 border-t border-gray-800 dark:border-gray-800 mt-auto">
+        <button onclick="App.toggleDark()" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-gray-400 hover:text-white hover:bg-gray-800 dark:hover:bg-gray-800" id="dark-toggle">
+          <i class="fas fa-moon w-5 text-center" id="dark-icon"></i>
+          <span id="dark-label">Tema Escuro</span>
+        </button>
+        <div class="px-4 py-3 mt-2 rounded-lg bg-gray-800/50 dark:bg-gray-800/50 hidden lg:block">
+          <p class="text-xs text-gray-500">Dados salvos localmente</p>
+          <p class="text-xs text-gray-600 mt-1"><i class="fas fa-shield-alt mr-1"></i>100% offline</p>
+        </div>
+      </div>
+    </aside>
+    <main id="content" class="flex-1 p-4 lg:p-8 overflow-auto"></main>
+  </div>
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+  <button onclick="App.toggleDark()" id="dark-toggle-mobile" class="lg:hidden fixed bottom-[68px] right-4 z-50 w-11 h-11 rounded-full bg-gray-800 dark:bg-gray-700 text-gray-200 shadow-lg flex items-center justify-center text-lg transition-colors" style="bottom: calc(68px + env(safe-area-inset-bottom, 0px));">
+    <i class="fas fa-moon" id="dark-icon-mobile"></i>
+  </button>
+<script>
+const App = {
+  data: null,
+  toastTimer: null,
+
+  init() {
+    this.updateDarkUI()
+    this.load()
+    this.render()
+    this.bindEvents()
+    this.updateNav()
+  },
+
+  toggleDark() {
+    const isDark = document.documentElement.classList.toggle('dark')
+    localStorage.setItem('orcamentos_dark', isDark)
+    this.updateDarkUI()
+  },
+
+  updateDarkUI() {
+    const isDark = document.documentElement.classList.contains('dark')
+    const icon = document.getElementById('dark-icon')
+    const label = document.getElementById('dark-label')
+    const mobIcon = document.getElementById('dark-icon-mobile')
+    if (icon) icon.className = isDark ? 'fas fa-sun w-5 text-center' : 'fas fa-moon w-5 text-center'
+    if (label) label.textContent = isDark ? 'Tema Claro' : 'Tema Escuro'
+    if (mobIcon) mobIcon.className = isDark ? 'fas fa-sun' : 'fas fa-moon'
+  },
+
+  load() {
+    try {
+      const saved = localStorage.getItem('orcamentos_app_data')
+      if (saved) {
+        this.data = JSON.parse(saved)
+        if (!this.data.budgets) this.data.budgets = []
+        if (!this.data.clients) this.data.clients = []
+        if (!this.data.currentTab) this.data.currentTab = 'dashboard'
+        if (!this.data.editingBudgetId) this.data.editingBudgetId = null
+        if (this.data.budgets) this.data.budgets.forEach(b => { if (b.items === undefined) b.items = [] })
+        return
+      }
+    } catch (e) { console.warn('Erro ao carregar dados:', e) }
+    this.data = { clients: [], budgets: [], currentTab: 'dashboard', editingBudgetId: null }
+  },
+
+  save() {
+    try { localStorage.setItem('orcamentos_app_data', JSON.stringify(this.data)) } catch (e) { console.warn('Erro ao salvar:', e) }
+  },
+
+  navigate(tab) {
+    this.data.currentTab = tab
+    this.data.editingBudgetId = null
+    if (tab==='novo-orcamento') this.budgetFormItems = []
+    this.save()
+    this.render()
+    this.updateNav()
+  },
+
+  updateNav() {
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      const t = btn.dataset.tab
+      btn.className = t === this.data.currentTab
+        ? 'nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 bg-blue-600/20 text-blue-300 border-l-2 border-blue-500'
+        : 'nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-gray-400 hover:text-white hover:bg-gray-800 dark:hover:bg-gray-800'
+    })
+  },
+
+  toast(message, type = 'success') {
+    const container = document.getElementById('toast-container')
+    const colors = { success: 'bg-emerald-600', error: 'bg-red-600', info: 'bg-blue-600', warning: 'bg-amber-600' }
+    const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle', warning: 'fa-exclamation-triangle' }
+    const el = document.createElement('div')
+    el.className = (colors[type]||colors.info)+' text-white px-5 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 animate-slide-in'
+    el.innerHTML = `<i class="fas ${icons[type]||icons.info}"></i> ${message}`
+    container.appendChild(el)
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300) }, 3000)
+  },
+
+  addClient(data) {
+    const client = { id: 'cl_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,6), name: data.name.trim(), email: data.email.trim(), phone: data.phone.trim(), address: data.address.trim() }
+    if (!client.name) { this.toast('Nome do cliente é obrigatório.', 'error'); return false }
+    this.data.clients.push(client); this.save(); this.render()
+    this.toast(`Cliente "${client.name}" adicionado!`); return true
+  },
+
+  updateClient(id, data) {
+    const idx = this.data.clients.findIndex(c => c.id === id)
+    if (idx === -1) { this.toast('Cliente não encontrado.', 'error'); return false }
+    if (!data.name.trim()) { this.toast('Nome do cliente é obrigatório.', 'error'); return false }
+    this.data.clients[idx] = { ...this.data.clients[idx], name: data.name.trim(), email: data.email.trim(), phone: data.phone.trim(), address: data.address.trim() }
+    this.save(); this.render()
+    this.toast(`Cliente "${this.data.clients[idx].name}" atualizado!`); return true
+  },
+
+  deleteClient(id) {
+    const client = this.data.clients.find(c => c.id === id)
+    if (!client || !confirm(`Excluir cliente "${client.name}"?`)) return
+    this.data.clients = this.data.clients.filter(c => c.id !== id); this.save(); this.render()
+    this.toast(`Cliente "${client.name}" excluído.`)
+  },
+
+  saveBudget(formData) {
+    if (!formData.clientId) { this.toast('Selecione um cliente.', 'error'); return false }
+    if (!formData.items || formData.items.length === 0) { this.toast('Adicione pelo menos um item.', 'error'); return false }
+    const items = formData.items.map(item => ({ description: item.description.trim(), quantity: item.quantity===''?1:parseFloat(item.quantity)||1, unit: item.unit.trim()||'unidade', unitPrice: item.unitPrice===''?0:parseFloat(item.unitPrice)||0 }))
+    const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
+    const discount = parseFloat(formData.discount)||0
+    const total = Math.max(0, subtotal - discount)
+    if (this.data.editingBudgetId) {
+      const idx = this.data.budgets.findIndex(b => b.id === this.data.editingBudgetId)
+      if (idx !== -1) {
+        this.data.budgets[idx] = { ...this.data.budgets[idx], clientId: formData.clientId, date: formData.date||new Date().toISOString().slice(0,10), dueDate: formData.dueDate||'', notes: formData.notes.trim(), status: formData.status||'rascunho', discount, subtotal, total, items, updatedAt: new Date().toISOString() }
+        this.save(); this.data.editingBudgetId = null; this.save(); this.render()
+        this.toast('Orçamento atualizado com sucesso!'); return { id: this.data.budgets[idx].id, isNew: false }
+      }
+    }
+    const budget = { id: 'ORC-'+Date.now().toString(36).toUpperCase(), clientId: formData.clientId, date: formData.date||new Date().toISOString().slice(0,10), dueDate: formData.dueDate||'', notes: formData.notes.trim(), status: formData.status||'rascunho', discount, subtotal, total, items, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    this.data.budgets.push(budget); this.save(); this.data.editingBudgetId = null; this.save(); this.render()
+    this.toast('Orçamento salvo com sucesso!'); return { id: budget.id, isNew: true }
+  },
+
+  deleteBudget(id) {
+    if (!confirm('Excluir este orçamento?')) return
+    this.data.budgets = this.data.budgets.filter(b => b.id !== id); this.save()
+    if (this.data.currentTab === 'ver-orcamento') this.navigate('dashboard'); else this.render()
+    this.toast('Orçamento excluído.')
+  },
+
+  editBudget(id) { this.data.editingBudgetId = id; this.data.currentTab = 'novo-orcamento'; this.save(); this.render(); this.updateNav() },
+  viewBudget(id) { this.data.currentTab = 'ver-orcamento'; this.data.viewingBudgetId = id; this.save(); this.render(); this.updateNav() },
+
+  duplicateBudget(id) {
+    const orig = this.data.budgets.find(b => b.id === id)
+    if (!orig) return
+    const copy = { ...JSON.parse(JSON.stringify(orig)), id: 'ORC-'+Date.now().toString(36).toUpperCase(), date: new Date().toISOString().slice(0,10), status: 'rascunho', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    this.data.budgets.push(copy); this.save(); this.render()
+    this.toast('Orçamento duplicado!')
+  },
+
+  getClient(id) { return this.data.clients.find(c => c.id === id) },
+  getBudget(id) { return this.data.budgets.find(b => b.id === id) },
+
+  getProductHistory() {
+    const map = {}
+    this.data.budgets.forEach(b => {
+      b.items.forEach(item => {
+        if (!item.description || !item.description.trim()) return
+        const key = item.description.trim().toLowerCase()
+        if (!map[key] || (item.unitPrice > 0 && map[key].unitPrice === 0)) {
+          map[key] = { description: item.description.trim(), unitPrice: item.unitPrice, unit: item.unit }
+        }
+      })
+    })
+    return Object.values(map).sort((a, b) => a.description.localeCompare(b.description, 'pt-BR'))
+  },
+
+  fmt(n) {
+    if (n===null||n===undefined||isNaN(n)) return 'R$ 0,00'
+    return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n)
+  },
+
+  fmtDate(d) {
+    if (!d) return ''
+    const [y,m,day]=d.split('-')
+    if (!y||!m||!day) return d
+    return day+'/'+m+'/'+y
+  },
+
+  statusBadge(status) {
+    const map = { rascunho: ['bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300','rascunho'], enviado: ['bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300','enviado'], aprovado: ['bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300','aprovado'], recusado: ['bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300','recusado'] }
+    const [c,l]=map[status]||map.rascunho
+    return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium '+c+'">'+l+'</span>'
+  },
+
+  render() {
+    const tab = this.data.currentTab
+    const bc = document.getElementById('budget-count')
+    if (bc) bc.textContent = this.data.budgets.length
+    const el = document.getElementById('content')
+    if (tab==='dashboard') el.innerHTML = this.renderDashboard()
+    else if (tab==='clientes') el.innerHTML = this.renderClientes()
+    else if (tab==='novo-orcamento') el.innerHTML = this.renderNovoOrcamento()
+    else if (tab==='ver-orcamento') el.innerHTML = this.renderVerOrcamento()
+    else if (tab==='orcamentos') el.innerHTML = this.renderOrcamentos()
+    else el.innerHTML = this.renderDashboard()
+    requestAnimationFrame(() => { if (tab==='novo-orcamento') this.initBudgetForm() })
+  },
+
+  renderDashboard() {
+    const { budgets, clients } = this.data
+    const total = budgets.reduce((s,b) => s+(b.total||0), 0)
+    const aprovados = budgets.filter(b => b.status==='aprovado')
+    const totalAprov = aprovados.reduce((s,b) => s+(b.total||0), 0)
+    const recentes = [...budgets].sort((a,b) => new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt)).slice(0,5)
+    return `<div class="max-w-6xl mx-auto space-y-6">
+      <div class="flex items-center justify-between">
+        <div><h2 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h2><p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Resumo geral do sistema</p></div>
+        <button onclick="App.navigate('novo-orcamento')" class="no-print inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"><i class="fas fa-plus"></i> Novo Orçamento</button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-5">
+          <div class="flex items-center justify-between"><p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total de Orçamentos</p><span class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center"><i class="fas fa-file-invoice"></i></span></div>
+          <p class="text-2xl font-bold text-gray-900 dark:text-white mt-2">${budgets.length}</p><p class="text-xs text-gray-400 dark:text-gray-500 mt-1">${aprovados.length} aprovados</p>
+        </div>
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-5">
+          <div class="flex items-center justify-between"><p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Faturado</p><span class="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center"><i class="fas fa-dollar-sign"></i></span></div>
+          <p class="text-2xl font-bold text-gray-900 dark:text-white mt-2">${this.fmt(total)}</p><p class="text-xs text-gray-400 dark:text-gray-500 mt-1">${this.fmt(totalAprov)} aprovados</p>
+        </div>
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-5">
+          <div class="flex items-center justify-between"><p class="text-sm font-medium text-gray-500 dark:text-gray-400">Clientes</p><span class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center"><i class="fas fa-users"></i></span></div>
+          <p class="text-2xl font-bold text-gray-900 dark:text-white mt-2">${clients.length}</p>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-5">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Orçamentos Recentes</h3>
+          ${recentes.length===0?'<p class="text-sm text-gray-400 dark:text-gray-500 py-8 text-center">Nenhum orçamento criado ainda.</p>':`
+          <div class="overflow-x-auto"><table class="w-full text-sm">
+            <thead><tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+              <th class="pb-3 font-medium hidden sm:table-cell">ID</th><th class="pb-3 font-medium">Cliente</th><th class="pb-3 font-medium hidden sm:table-cell">Data</th><th class="pb-3 font-medium">Valor</th><th class="pb-3 font-medium">Status</th><th class="pb-3 font-medium"></th>
+            </tr></thead><tbody>
+            ${recentes.map(b => { const c=this.getClient(b.clientId); return `<tr class="border-b border-gray-50 dark:border-gray-800/50 transition-colors">
+              <td class="py-3 font-mono text-xs text-gray-600 dark:text-gray-400 hidden sm:table-cell">${b.id}</td>
+              <td class="py-3 font-medium text-gray-900 dark:text-white max-w-[120px] truncate">${c?c.name:'<span class="text-gray-400">—</span>'}</td>
+              <td class="py-3 text-gray-600 dark:text-gray-400 hidden sm:table-cell">${this.fmtDate(b.date)}</td>
+              <td class="py-3 font-medium text-gray-900 dark:text-white whitespace-nowrap">${this.fmt(b.total)}</td>
+              <td class="py-3">${this.statusBadge(b.status)}</td>
+              <td class="py-3 text-right"><button onclick="App.viewBudget('${b.id}')" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"><i class="fas fa-eye"></i><span class="hidden sm:inline ml-1">Ver</span></button></td>
+            </tr>`}).join('')}
+      </tbody></table></div>`}
+        </div>
+      </div>`
+  },
+
+  renderClientes() {
+    const { clients } = this.data
+    return `<div class="max-w-5xl mx-auto space-y-6">
+      <div><h2 class="text-2xl font-bold text-gray-900 dark:text-white">Clientes</h2><p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Gerencie sua base de clientes</p></div>
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-5">
+        <form id="form-cliente" onsubmit="return App.handleClienteForm(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <input type="hidden" id="cliente-id" value="">
+          <div><label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nome *</label><input id="cliente-nome" type="text" class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"></div>
+          <div><label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Email</label><input id="cliente-email" type="email" class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"></div>
+          <div><label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Telefone</label><input id="cliente-telefone" type="text" class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"></div>
+          <div><label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Endereço</label><input id="cliente-endereco" type="text" class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"></div>
+          <div class="flex items-end gap-2">
+            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"><i class="fas fa-save mr-1"></i> Salvar</button>
+            <button type="button" onclick="App.cancelClienteEdit()" class="px-3 py-2 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors hidden" id="btn-cancel-cliente"><i class="fas fa-times"></i></button>
+          </div>
+        </form>
+      </div>
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+      ${clients.length===0?'<div class="p-12 text-center"><i class="fas fa-users text-gray-300 dark:text-gray-700 text-4xl mb-3"></i><p class="text-gray-400 dark:text-gray-500 text-sm">Nenhum cliente cadastrado.</p></div>':`
+      <div class="overflow-x-auto"><table class="w-full text-sm">
+        <thead><tr class="bg-gray-50 dark:bg-gray-800/50 text-left text-gray-500 dark:text-gray-400">
+          <th class="px-5 py-3 font-medium">Nome</th><th class="px-5 py-3 font-medium hidden sm:table-cell">Email</th><th class="px-5 py-3 font-medium">Telefone</th><th class="px-5 py-3 font-medium hidden lg:table-cell">Endereço</th><th class="px-5 py-3 font-medium text-right">Ações</th>
+        </tr></thead><tbody>
+        ${clients.map(c => `<tr class="border-t border-gray-100 dark:border-gray-800 transition-colors">
+          <td class="px-5 py-3 font-medium text-gray-900 dark:text-white">${c.name}</td>
+          <td class="px-5 py-3 text-gray-600 dark:text-gray-400 hidden sm:table-cell">${c.email||'<span class="text-gray-300 dark:text-gray-600">—</span>'}</td>
+          <td class="px-5 py-3 text-gray-600 dark:text-gray-400">${c.phone||'<span class="text-gray-300 dark:text-gray-600">—</span>'}</td>
+          <td class="px-5 py-3 text-gray-600 dark:text-gray-400 max-w-[200px] truncate hidden lg:table-cell">${c.address||'<span class="text-gray-300 dark:text-gray-600">—</span>'}</td>
+          <td class="px-5 py-3 text-right whitespace-nowrap">
+            <button onclick="App.editCliente('${c.id}')" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium mr-3"><i class="fas fa-edit"></i><span class="hidden sm:inline ml-1">Editar</span></button>
+            <button onclick="App.deleteClient('${c.id}')" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium"><i class="fas fa-trash"></i><span class="hidden sm:inline ml-1">Excluir</span></button>
+          </td>
+        </tr>`).join('')}
+      </tbody></table></div>`}
+      </div>
+    </div>`
+  },
+
+  renderOrcamentos() {
+    const { budgets } = this.data
+    const sorted = [...budgets].sort((a,b) => new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt))
+    return `<div class="max-w-5xl mx-auto space-y-6">
+      <div><h2 class="text-2xl font-bold text-gray-900 dark:text-white">Orçamentos Salvos</h2><p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${budgets.length} orçamento${budgets.length!==1?'s':''} registrado${budgets.length!==1?'s':''}</p></div>
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+      ${sorted.length===0?'<div class="p-12 text-center"><i class="fas fa-folder-open text-gray-300 dark:text-gray-700 text-4xl mb-3"></i><p class="text-gray-400 dark:text-gray-500 text-sm">Nenhum orçamento salvo.</p></div>':`
+      <div class="overflow-x-auto"><table class="w-full text-sm">
+        <thead><tr class="bg-gray-50 dark:bg-gray-800/50 text-left text-gray-500 dark:text-gray-400">
+          <th class="px-5 py-3 font-medium hidden sm:table-cell">ID</th><th class="px-5 py-3 font-medium">Cliente</th><th class="px-5 py-3 font-medium hidden sm:table-cell">Data</th><th class="px-5 py-3 font-medium">Valor</th><th class="px-5 py-3 font-medium">Status</th><th class="px-5 py-3 font-medium text-right">Ações</th>
+        </tr></thead><tbody>
+        ${sorted.map(b => { const c=this.getClient(b.clientId); return `<tr class="border-t border-gray-100 dark:border-gray-800 transition-colors">
+          <td class="px-5 py-3 font-mono text-xs text-gray-600 dark:text-gray-400 hidden sm:table-cell">${b.id}</td>
+          <td class="px-5 py-3 font-medium text-gray-900 dark:text-white">${c?c.name:'<span class="text-gray-400">—</span>'}</td>
+          <td class="px-5 py-3 text-gray-600 dark:text-gray-400 hidden sm:table-cell">${this.fmtDate(b.date)}</td>
+          <td class="px-5 py-3 font-medium text-gray-900 dark:text-white whitespace-nowrap">${this.fmt(b.total)}</td>
+          <td class="px-5 py-3">${this.statusBadge(b.status)}</td>
+          <td class="px-5 py-3 text-right whitespace-nowrap">
+            <button onclick="App.viewBudget('${b.id}')" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium mr-2"><i class="fas fa-eye"></i><span class="hidden sm:inline ml-1">Ver</span></button>
+            <button onclick="App.editBudget('${b.id}')" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium mr-2"><i class="fas fa-edit"></i><span class="hidden sm:inline ml-1">Editar</span></button>
+            <button onclick="App.duplicateBudget('${b.id}')" class="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300 text-sm font-medium mr-2 hidden sm:inline-block"><i class="fas fa-copy mr-1"></i>Duplicar</button>
+            <button onclick="App.deleteBudget('${b.id}')" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium"><i class="fas fa-trash"></i><span class="hidden sm:inline ml-1">Excluir</span></button>
+          </td>
+        </tr>`}).join('')}
+      </tbody></table></div>`}
+      </div>
+    </div>`
+  },
+
+  renderNovoOrcamento() {
+    const { clients, editingBudgetId } = this.data
+    const budget = editingBudgetId ? this.getBudget(editingBudgetId) : null
+    return `<div class="max-w-6xl mx-auto space-y-6">
+      <div class="flex items-center justify-between">
+        <div><h2 class="text-2xl font-bold text-gray-900 dark:text-white">${budget?'Editar':'Novo'} Orçamento</h2><p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${budget?'Editando: '+budget.id:'Preencha os dados abaixo'}</p></div>
+      </div>
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-5">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wide">Dados do Orçamento</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 min-w-0">
+          <div>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Cliente *</label>
+            <select id="b-cliente" class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white"><option value="">Selecione um cliente</option>${clients.map(c => `<option value="${c.id}"${budget&&budget.clientId===c.id?' selected':''}>${c.name}</option>`).join('')}</select>
+            ${clients.length===0?'<p class="text-xs text-amber-600 dark:text-amber-400 mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Cadastre clientes primeiro</p>':''}
+          </div>
+          <div><label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Data</label><input id="b-data" type="date" class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value="${budget?budget.date:new Date().toISOString().slice(0,10)}"></div>
+          <div><label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Validade</label><input id="b-validade" type="date" class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value="${budget?budget.dueDate:''}"></div>
+          <div><label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Status</label>
+            <select id="b-status" class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white">
+              <option value="rascunho"${budget&&budget.status==='rascunho'?' selected':''}>Rascunho</option>
+              <option value="enviado"${budget&&budget.status==='enviado'?' selected':''}>Enviado</option>
+              <option value="aprovado"${budget&&budget.status==='aprovado'?' selected':''}>Aprovado</option>
+              <option value="recusado"${budget&&budget.status==='recusado'?' selected':''}>Recusado</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2 lg:col-span-3"><label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Observações</label><input id="b-observacoes" type="text" class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" placeholder="Condições de pagamento, prazos, observações..." value="${budget?budget.notes:''}"></div>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-5">
+        <div class="flex items-center justify-between mb-4"><h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Itens do Orçamento</h3><button onclick="App.addItemRow()" class="no-print inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors"><i class="fas fa-plus"></i> Adicionar Item</button></div>
+          <div class="overflow-x-auto"><table class="w-full text-sm" id="items-table">
+            <thead><tr class="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+              <th class="pb-2 font-medium">Descrição</th><th class="pb-2 font-medium text-center">Qtd</th><th class="pb-2 font-medium text-center hidden sm:table-cell">Un.</th><th class="pb-2 font-medium text-right">Valor Unit.</th><th class="pb-2 font-medium text-right">Total</th><th class="pb-2 w-10"></th>
+            </tr></thead><tbody id="items-tbody"></tbody>
+          </table></div>
+          <datalist id="prod-history">
+            ${this.getProductHistory().map(p => `<option value="${this.esc(p.description)}">${this.fmt(p.unitPrice)} / ${p.unit}</option>`).join('')}
+          </datalist>
+      </div>
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-5">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div class="flex items-center gap-3"><label class="text-sm font-medium text-gray-600 dark:text-gray-400">Desconto:</label><input id="b-desconto" type="number" step="0.01" min="0" class="w-32 px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" placeholder="0,00" value="${budget&&budget.discount?budget.discount:''}"></div>
+          <div class="text-right space-y-1">
+            <div class="flex items-center justify-end gap-6"><span class="text-sm text-gray-500 dark:text-gray-400">Subtotal:</span><span class="text-sm text-gray-700 dark:text-gray-300 font-medium" id="b-subtotal">${budget?this.fmt(budget.subtotal):'R$ 0,00'}</span></div>
+            <div class="flex items-center justify-end gap-6"><span class="text-sm text-gray-500 dark:text-gray-400">Desconto:</span><span class="text-sm text-red-600 dark:text-red-400 font-medium" id="b-desconto-show">${budget?this.fmt(budget.discount||0):'R$ 0,00'}</span></div>
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-1 flex items-center justify-end gap-6"><span class="text-base font-semibold text-gray-900 dark:text-white">Total:</span><span class="text-xl font-bold text-gray-900 dark:text-white" id="b-total">${budget?this.fmt(budget.total):'R$ 0,00'}</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pb-8 no-print">
+        <button onclick="App.navigate('dashboard')" class="px-4 py-2.5 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancelar</button>
+        <button onclick="App.handleSaveBudget()" class="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"><i class="fas fa-save mr-1"></i> Salvar</button>
+        <button onclick="App.handleSaveAndPDF()" class="px-5 py-2.5 bg-gray-800 dark:bg-gray-700 text-white text-sm font-medium rounded-lg hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors shadow-sm"><i class="fas fa-file-pdf mr-1"></i> Salvar & PDF</button>
+      </div>
+    </div>`
+  },
+
+  renderVerOrcamento() {
+    const budget = this.getBudget(this.data.viewingBudgetId)
+    if (!budget) return `<div class="max-w-4xl mx-auto p-12 text-center"><i class="fas fa-exclamation-circle text-gray-300 dark:text-gray-700 text-4xl mb-3"></i><p class="text-gray-400 dark:text-gray-500 text-lg">Orçamento não encontrado.</p><button onclick="App.navigate('dashboard')" class="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Voltar</button></div>`
+    const client = this.getClient(budget.clientId)
+    return `<div class="max-w-4xl mx-auto space-y-6">
+      <div class="flex items-center justify-between no-print">
+        <div><h2 class="text-2xl font-bold text-gray-900 dark:text-white">${budget.id}</h2><p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Criado em ${this.fmtDate(budget.date)}</p></div>
+        ${this.statusBadge(budget.status)}
+      </div>
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 print:shadow-none print:border-gray-300">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div><p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Cliente</p><p class="text-base font-semibold text-gray-900 dark:text-white">${client?client.name:'<span class="text-gray-400">—</span>'}</p>${client&&client.email?'<p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">'+client.email+'</p>':''}${client&&client.phone?'<p class="text-sm text-gray-600 dark:text-gray-400">'+client.phone+'</p>':''}</div>
+          <div class="text-right"><p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Período</p><p class="text-sm text-gray-700 dark:text-gray-300">Data: ${this.fmtDate(budget.date)}</p>${budget.dueDate?'<p class="text-sm text-gray-700 dark:text-gray-300">Validade: '+this.fmtDate(budget.dueDate)+'</p>':''}</div>
+        </div>
+        ${budget.notes?'<div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800"><p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Observações</p><p class="text-sm text-gray-700 dark:text-gray-300">'+budget.notes+'</p></div>':''}
+      </div>
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden print:shadow-none print:border-gray-300">
+        <div class="overflow-x-auto"><table class="w-full text-sm">
+          <thead><tr class="bg-gray-50 dark:bg-gray-800/50 text-left text-gray-500 dark:text-gray-400">
+            <th class="px-5 py-3 font-medium">Descrição</th><th class="px-5 py-3 font-medium text-center">Qtd</th><th class="px-5 py-3 font-medium text-center hidden sm:table-cell">Un.</th><th class="px-5 py-3 font-medium text-right">Valor Unit.</th><th class="px-5 py-3 font-medium text-right">Total</th>
+          </tr></thead><tbody>
+          ${budget.items.map((item,i) => { const t=(item.quantity||0)*(item.unitPrice||0); return `<tr class="border-t border-gray-100 dark:border-gray-800 ${i%2===0?'bg-white dark:bg-gray-900':'bg-gray-50/50 dark:bg-gray-800/20'}">
+            <td class="px-5 py-3 text-gray-900 dark:text-white font-medium max-w-[160px] sm:max-w-none truncate">${item.description||'<span class="text-gray-300 dark:text-gray-600">—</span>'}</td>
+            <td class="px-5 py-3 text-center text-gray-900 dark:text-white font-medium">${item.quantity}</td>
+            <td class="px-5 py-3 text-center text-gray-600 dark:text-gray-400 hidden sm:table-cell">${item.unit}</td>
+            <td class="px-5 py-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">${this.fmt(item.unitPrice)}</td>
+            <td class="px-5 py-3 text-right font-medium text-gray-900 dark:text-white whitespace-nowrap">${this.fmt(t)}</td>
+          </tr>`}).join('')}
+          </tbody></table></div>
+      </div>
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 print:shadow-none print:border-gray-300">
+        <div class="flex justify-end"><div class="w-full max-w-xs space-y-1.5">
+          <div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Subtotal:</span><span class="font-medium text-gray-700 dark:text-gray-300">${this.fmt(budget.subtotal)}</span></div>
+          ${budget.discount?'<div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Desconto:</span><span class="font-medium text-red-600 dark:text-red-400">-'+this.fmt(budget.discount)+'</span></div>':''}
+          <div class="border-t border-gray-200 dark:border-gray-700 pt-1.5 flex justify-between"><span class="text-base font-semibold text-gray-900 dark:text-white">Total:</span><span class="text-xl font-bold text-gray-900 dark:text-white">${this.fmt(budget.total)}</span></div>
+        </div></div>
+      </div>
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pb-8 no-print">
+        <button onclick="App.navigate('dashboard')" class="w-full sm:w-auto px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"><i class="fas fa-arrow-left mr-1"></i> Voltar</button>
+        <div class="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
+          <button onclick="App.editBudget('${budget.id}')" class="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"><i class="fas fa-edit mr-1"></i> Editar</button>
+          <button onclick="App.generatePDF('${budget.id}')" class="flex-1 sm:flex-none px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white text-sm font-medium rounded-lg hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors whitespace-nowrap"><i class="fas fa-file-pdf mr-1"></i> PDF</button>
+          <button onclick="window.print()" class="flex-1 sm:flex-none px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 whitespace-nowrap"><i class="fas fa-print mr-1"></i> Imprimir</button>
+          <button onclick="App.duplicateBudget('${budget.id}')" class="flex-1 sm:flex-none px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 whitespace-nowrap"><i class="fas fa-copy mr-1"></i> Duplicar</button>
+          <button onclick="App.deleteBudget('${budget.id}')" class="flex-1 sm:flex-none px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 whitespace-nowrap"><i class="fas fa-trash mr-1"></i> Excluir</button>
+        </div>
+      </div>
+      <div class="text-center text-xs text-gray-400 dark:text-gray-600 py-4 hidden print:block">${budget.id} — Gerado em ${new Date().toLocaleString('pt-BR')} — Sistema de Orçamentos</div>
+      <div class="hidden print:block text-center py-6 mb-4 border-b border-gray-300">
+        <h1 class="text-xl font-bold text-gray-900">ORÇAMENTO</h1>
+        <p class="text-sm text-gray-600 mt-1">${budget.id}</p>
+      </div>
+    </div>`
+  },
+
+  budgetFormItems: [],
+
+  initBudgetForm() {
+    const { editingBudgetId } = this.data
+    if (editingBudgetId) { const b=this.getBudget(editingBudgetId); this.budgetFormItems=b?b.items.map(i=>({...i})):[] }
+    else if (this.budgetFormItems.length===0) this.budgetFormItems=[{description:'',quantity:1,unit:'unidade',unitPrice:''}]
+    this.renderItemsTable(); this.updateTotals()
+    document.getElementById('b-desconto')?.addEventListener('input',()=>this.updateTotals())
+  },
+
+  renderItemsTable() {
+    const tbody = document.getElementById('items-tbody')
+    if (!tbody) return
+    tbody.innerHTML = this.budgetFormItems.map((item,i) => `<tr class="border-t border-gray-100 dark:border-gray-800 item-row" data-index="${i}">
+      <td class="py-2 pr-2"><input type="text" oninput="App.onItemInput(${i},'description',this.value)" onchange="App.onDescChange(${i},this.value)" list="prod-history" class="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value="${this.esc(item.description)}" placeholder="Descrição (autocomplete)"></td>
+      <td class="py-2 px-2 text-center"><input type="number" min="0.01" step="0.01" oninput="App.onItemInput(${i},'quantity',this.value)" class="w-20 px-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value="${item.quantity}"></td>
+      <td class="py-2 px-2 text-center hidden sm:table-cell"><input type="text" oninput="App.onItemInput(${i},'unit',this.value)" class="w-24 px-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value="${this.esc(item.unit)}"></td>
+      <td class="py-2 px-2 text-right"><span class="text-gray-500 dark:text-gray-400 text-xs font-medium mr-1 hidden sm:inline">R$</span><input type="number" min="0" step="0.01" oninput="App.onItemInput(${i},'unitPrice',this.value)" class="w-24 px-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm text-right focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none inline-block" value="${item.unitPrice}"></td>
+      <td class="py-2 px-2 text-right"><span class="text-sm font-medium text-gray-900 dark:text-white">${this.fmt((item.quantity||0)*(item.unitPrice||0))}</span></td>
+      <td class="py-2 pl-2 text-center"><button onclick="App.removeItemRow(${i})" class="no-print text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors p-1 ${this.budgetFormItems.length<=1?'opacity-30 pointer-events-none':''}" title="Remover"><i class="fas fa-times"></i></button></td>
+    </tr>`).join('')
+  },
+
+  onItemInput(index, field, value) {
+    if (index<0||index>=this.budgetFormItems.length) return
+    if (field==='quantity'||field==='unitPrice') { this.budgetFormItems[index][field]=value===''?'':parseFloat(value)||0 }
+    else this.budgetFormItems[index][field]=value
+    const row=document.querySelector(`.item-row[data-index="${index}"]`)
+    if (row) { const item=this.budgetFormItems[index]; const s=row.querySelectorAll('span.text-sm.font-medium'); if (s.length) s[s.length-1].textContent=this.fmt((item.quantity||0)*(item.unitPrice||0)) }
+    this.updateTotals()
+  },
+
+  onDescChange(index, value) {
+    if (index<0||index>=this.budgetFormItems.length) return
+    if (!value.trim()) return
+    const key = value.trim().toLowerCase()
+    const products = this.getProductHistory()
+    const match = products.find(p => p.description.toLowerCase() === key)
+    if (match) {
+      const item = this.budgetFormItems[index]
+      item.unit = match.unit
+      if (match.unitPrice > 0) item.unitPrice = match.unitPrice
+      this.renderItemsTable()
+      this.updateTotals()
+    }
+  },
+
+  updateTotals() {
+    const sub=this.budgetFormItems.reduce((s,i)=>s+(i.quantity||0)*(i.unitPrice||0),0)
+    const disc=parseFloat(document.getElementById('b-desconto')?.value)||0
+    const tot=Math.max(0,sub-disc)
+    const e1=document.getElementById('b-subtotal'); const e2=document.getElementById('b-desconto-show'); const e3=document.getElementById('b-total')
+    if (e1) e1.textContent=this.fmt(sub); if (e2) e2.textContent=this.fmt(disc); if (e3) e3.textContent=this.fmt(tot)
+  },
+
+  addItemRow() { this.budgetFormItems.push({description:'',quantity:1,unit:'unidade',unitPrice:''}); this.renderItemsTable(); this.updateTotals() },
+
+  removeItemRow(index) { if (this.budgetFormItems.length<=1) return; this.budgetFormItems.splice(index,1); this.renderItemsTable(); this.updateTotals() },
+
+  handleSaveBudget() {
+    const d=document; const items=this.budgetFormItems.filter(i=>i.description.trim()!=='')
+    const r=this.saveBudget({clientId:d.getElementById('b-cliente')?.value||'',date:d.getElementById('b-data')?.value||'',dueDate:d.getElementById('b-validade')?.value||'',status:d.getElementById('b-status')?.value||'rascunho',notes:d.getElementById('b-observacoes')?.value||'',discount:parseFloat(d.getElementById('b-desconto')?.value)||0,items})
+    if (r) { this.budgetFormItems=[]; App.navigate('dashboard') }
+  },
+
+  handleSaveAndPDF() {
+    const d=document; const items=this.budgetFormItems.filter(i=>i.description.trim()!=='')
+    const r=this.saveBudget({clientId:d.getElementById('b-cliente')?.value||'',date:d.getElementById('b-data')?.value||'',dueDate:d.getElementById('b-validade')?.value||'',status:d.getElementById('b-status')?.value||'rascunho',notes:d.getElementById('b-observacoes')?.value||'',discount:parseFloat(d.getElementById('b-desconto')?.value)||0,items})
+    if (r) { this.budgetFormItems=[]; setTimeout(()=>{const b=this.getBudget(r.id); if(b)App.generatePDF(b.id); App.navigate('dashboard')},100) }
+  },
+
+  handleClienteForm(e) {
+    e.preventDefault()
+    const d=document; const id=d.getElementById('cliente-id').value
+    const data={name:d.getElementById('cliente-nome').value,email:d.getElementById('cliente-email').value,phone:d.getElementById('cliente-telefone').value,address:d.getElementById('cliente-endereco').value}
+    if (id) this.updateClient(id,data); else this.addClient(data)
+    if (!id) { d.getElementById('cliente-nome').value=''; d.getElementById('cliente-email').value=''; d.getElementById('cliente-telefone').value=''; d.getElementById('cliente-endereco').value='' }
+    return false
+  },
+
+  editCliente(id) {
+    const c=this.getClient(id); if (!c) return
+    document.getElementById('cliente-id').value=c.id; document.getElementById('cliente-nome').value=c.name; document.getElementById('cliente-email').value=c.email; document.getElementById('cliente-telefone').value=c.phone; document.getElementById('cliente-endereco').value=c.address
+    document.getElementById('btn-cancel-cliente').classList.remove('hidden'); document.getElementById('cliente-nome').focus()
+  },
+
+  cancelClienteEdit() {
+    document.getElementById('cliente-id').value=''; document.getElementById('cliente-nome').value=''; document.getElementById('cliente-email').value=''; document.getElementById('cliente-telefone').value=''; document.getElementById('cliente-endereco').value=''
+    document.getElementById('btn-cancel-cliente').classList.add('hidden')
+  },
+
+  generatePDF(budgetId) {
+    const budget=this.getBudget(budgetId)
+    if (!budget) { this.toast('Orçamento não encontrado.','error'); return }
+    try {
+      const {jsPDF}=window.jspdf
+      const doc=new jsPDF({unit:'mm',format:'a4'})
+      const pw=doc.internal.pageSize.getWidth()
+      const m=20
+      doc.setFontSize(20); doc.setTextColor(30,41,59); doc.text('ORÇAMENTO MÓBILE ARTS',m,25)
+      doc.setFontSize(10); doc.setTextColor(100,116,139); doc.text('ID: '+budget.id,m,32)
+      doc.setDrawColor(59,130,246); doc.setLineWidth(0.5); doc.line(m,35,pw-m,35)
+      doc.setFontSize(8); doc.text('Data: '+this.fmtDate(budget.date),m,38)
+      let y=45
+
+      const items=budget.items.map(item=>{const t=(item.quantity||0)*(item.unitPrice||0); return [item.description||'-',String(item.quantity||0),item.unit||'-',this.fmt(item.unitPrice),this.fmt(t)]})
+      doc.autoTable({startY:y,head:[['Descrição','Qtd','Un.','Valor Unit.','Total']],body:items,theme:'grid',headStyles:{fillColor:[30,41,59],textColor:[255,255,255],fontStyle:'bold',fontSize:9},bodyStyles:{fontSize:8.5,textColor:[51,65,85]},alternateRowStyles:{fillColor:[248,250,252]},columnStyles:{0:{cellWidth:80},1:{cellWidth:15,halign:'center'},2:{cellWidth:15,halign:'center'},3:{cellWidth:30,halign:'right'},4:{cellWidth:30,halign:'right'}},margin:{left:m,right:m},tableLineColor:[226,232,240],tableLineWidth:0.1})
+
+      y=doc.lastAutoTable.finalY+10; const tx=pw-m-60
+      doc.setFontSize(9); doc.setTextColor(71,85,105)
+      doc.text('Subtotal:',tx,y); doc.text(this.fmt(budget.subtotal),pw-m,y,{align:'right'}); y+=5
+      if (budget.discount) { doc.text('Desconto:',tx,y); doc.setTextColor(220,38,38); doc.text('- '+this.fmt(budget.discount),pw-m,y,{align:'right'}); y+=5 }
+      doc.setDrawColor(30,41,59); doc.setLineWidth(0.5); doc.line(tx,y,pw-m,y); y+=5
+      doc.setFontSize(12); doc.setFont(undefined,'bold'); doc.setTextColor(30,41,59)
+      doc.text('Total:',tx,y); doc.text(this.fmt(budget.total),pw-m,y,{align:'right'})
+
+      if (budget.notes) { y+=12; doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(71,85,105); doc.text('OBSERVAÇÕES',m,y); y+=5; doc.setFont(undefined,'normal'); doc.setTextColor(100,116,139); const sn=doc.splitTextToSize(budget.notes,pw-2*m); doc.text(sn,m,y); y+=sn.length*4.5 }
+
+      y=Math.max(y+10,doc.internal.pageSize.getHeight()-25)
+      doc.setFontSize(8); doc.setTextColor(148,163,184)
+      doc.text('MÓBILE ARTS',pw-m,y,{align:'right'})
+      doc.save(budget.id+'.pdf'); this.toast('PDF gerado com sucesso!')
+    } catch(e) { console.error('Erro ao gerar PDF:',e); this.toast('Erro ao gerar PDF.','error') }
+  },
+
+  esc(s) { if (!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML },
+
+  bindEvents() { document.querySelectorAll('.nav-btn').forEach(b=>{b.addEventListener('click',()=>this.navigate(b.dataset.tab))}) }
+}
+document.addEventListener('DOMContentLoaded',()=>App.init())
+</script>
+</body>
+</html>

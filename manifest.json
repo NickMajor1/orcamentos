@@ -1,0 +1,10 @@
+{
+  "name": "Orçamentos EMNATEC",
+  "short_name": "Orçamentos",
+  "description": "Sistema de orçamentos profissionais",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e293b",
+  "icons": []
+}
